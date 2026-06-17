@@ -116,7 +116,7 @@ private:
     std::mutex                      sendMutex_;
     std::condition_variable         sendCv_;
     std::deque<SendItem>            sendQueue_;
-    static constexpr size_t         MAX_SEND_QUEUE = 64;
+    static constexpr size_t         MAX_SEND_QUEUE = 1024;
 
     // ---- receive buffer ----
     std::vector<uint8_t> rxbuf_;

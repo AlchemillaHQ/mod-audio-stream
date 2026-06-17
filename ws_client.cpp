@@ -207,7 +207,14 @@ void WebSocketClient::sendBinary(const uint8_t* data, size_t len) {
 
     {
         std::lock_guard<std::mutex> lk(sendMutex_);
-        if (sendQueue_.size() >= MAX_SEND_QUEUE) return;
+        if (sendQueue_.size() >= MAX_SEND_QUEUE) {
+            static int overflow_warn = 0;
+            if (overflow_warn++ < 5 || overflow_warn % 1000 == 0) {
+                fprintf(stderr, "[ws_client] send queue overflow (%zu/%zu) - dropping frame\n",
+                        sendQueue_.size(), MAX_SEND_QUEUE);
+            }
+            return;
+        }
         sendQueue_.push_back(std::move(item));
     }
     sendCv_.notify_one();
@@ -222,7 +229,14 @@ void WebSocketClient::sendMessage(const char* text, size_t len) {
 
     {
         std::lock_guard<std::mutex> lk(sendMutex_);
-        if (sendQueue_.size() >= MAX_SEND_QUEUE) return;
+        if (sendQueue_.size() >= MAX_SEND_QUEUE) {
+            static int overflow_warn = 0;
+            if (overflow_warn++ < 5 || overflow_warn % 1000 == 0) {
+                fprintf(stderr, "[ws_client] send queue overflow (%zu/%zu) - dropping text\n",
+                        sendQueue_.size(), MAX_SEND_QUEUE);
+            }
+            return;
+        }
         sendQueue_.push_back(std::move(item));
     }
     sendCv_.notify_one();
@@ -725,13 +739,16 @@ void WebSocketClient::processFrame() {
 
 void WebSocketClient::drainSendQueue() {
     std::lock_guard<std::mutex> lk(sendMutex_);
-    while (!sendQueue_.empty()) {
+    size_t retries = 0;
+    while (!sendQueue_.empty() && retries < sendQueue_.size()) {
         SendItem item = std::move(sendQueue_.front());
         sendQueue_.pop_front();
         if (item.data.empty()) continue;
         if (!sendFrame(item.isBinary ? 0x2 : 0x1, item.data.data(), item.data.size())) {
-            sendQueue_.push_front(std::move(item));
-            break;
+            sendQueue_.push_back(std::move(item));
+            retries++;
+        } else {
+            retries = 0;
         }
     }
 }

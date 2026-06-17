@@ -1028,6 +1028,9 @@ extern "C" {
         if (!tech_pvt->playback_enabled || tech_pvt->playback_paused) return SWITCH_TRUE;
         if (tech_pvt->cleanup_started) return SWITCH_TRUE;
 
+        // Fast path: nothing queued for playback — skip mutex entirely
+        if (!tech_pvt->playback_in_response) return SWITCH_TRUE;
+
         if (switch_mutex_trylock(tech_pvt->mutex) != SWITCH_STATUS_SUCCESS) {
             return SWITCH_TRUE;
         }
@@ -1110,14 +1113,6 @@ extern "C" {
         tech_pvt->playback_in_response = 0;
         tech_pvt->playback_seq = 0;
         tech_pvt->playback_chunks_remaining = 0;
-
-        // reset raw audio mode under lock
-        if (tech_pvt->pAudioStreamer) {
-            auto sp_wrap = static_cast<std::shared_ptr<AudioStreamer>*>(tech_pvt->pAudioStreamer);
-            if (sp_wrap && *sp_wrap) {
-                (*sp_wrap)->rawAudioActive(false);
-            }
-        }
 
         switch_core_session_t *s = switch_core_media_bug_get_session(bug);
         fire_playback_event(s, tech_pvt, "queue_completed", -1, -1, -1, 0);

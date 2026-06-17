@@ -106,12 +106,42 @@ echo "--- Text & Metadata ---"
 check "send_text"             "uuid_audio_stream $CH_UUID send_text '{\"command\":\"ping\"}'"  "+OK"
 check "send_text special chars" "uuid_audio_stream $CH_UUID send_text 'hello world'"            "+OK"
 
-# ---- break ----
+# ---- break + recovery (binary mode must survive break) ----
 echo ""
-echo "--- Break ---"
+echo "--- Break & Recovery ---"
 check "break"                 "uuid_audio_stream $CH_UUID break"       "+OK"
 
-# ---- stop ----
+# After break, rawAudio mode must still work — binary frames
+# from the Go server should continue to be processed.
+# Re-activate and verify the reverse path.
+check "rawAudio after break" \
+    "uuid_audio_stream $CH_UUID send_text {\"type\":\"rawAudio\",\"data\":{\"sampleRate\":8000}}" "+OK"
+sleep 1
+PRE_RECOVERY=$(stats_field streamaudio_echoed)
+check "streamAudio after break" \
+    "uuid_audio_stream $CH_UUID send_text {\"type\":\"streamAudio\",\"data\":{\"audioDataType\":\"raw\",\"sampleRate\":8000,\"audioData\":\"AAAA\",\"after_break\":1}}" "+OK"
+sleep 2
+POST_RECOVERY=$(stats_field streamaudio_echoed)
+echo -n "  reverse path after break ... "
+if [ "$POST_RECOVERY" -gt "$PRE_RECOVERY" ] 2>/dev/null; then
+    echo "PASS (echoed: $PRE_RECOVERY -> $POST_RECOVERY)"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL (no echo after break: $PRE_RECOVERY -> $POST_RECOVERY)"
+    FAIL=$((FAIL + 1))
+fi
+
+# Binaries must still flow after break
+sleep 2
+BIN_AFTER_BREAK=$(stats_field binary_frames)
+echo -n "  forward audio after break ... "
+if [ "$BIN_AFTER_BREAK" -gt "$BIN" ] 2>/dev/null; then
+    echo "PASS ($BIN -> $BIN_AFTER_BREAK frames)"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL (stalled at $BIN_AFTER_BREAK)"
+    FAIL=$((FAIL + 1))
+fi
 echo ""
 echo "--- Stop ---"
 check "stop"                  "uuid_audio_stream $CH_UUID stop"        "+OK"
