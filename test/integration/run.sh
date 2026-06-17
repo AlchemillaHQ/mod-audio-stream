@@ -21,6 +21,11 @@ check() {
     fi
 }
 
+STATS_URL="http://169.254.1.2:8081/stats"
+stats_field() {
+    python3 -c "import urllib.request,json;r=urllib.request.urlopen('$STATS_URL');print(json.loads(r.read()).get('$1',0))" 2>/dev/null || echo 0
+}
+
 echo "=== Integration Tests ==="
 echo ""
 
@@ -51,12 +56,51 @@ if [ -z "$CH_UUID" ]; then
 fi
 
 check "call active"           "uuid_exists $CH_UUID"   "true"
+
+# ---- end-to-end audio flow ----
+echo ""
+echo "--- End-to-End Audio Flow ---"
+
+# Send rawAudio and streamAudio immediately before binary frames fill the queue
+check "activate rawAudio mode" \
+    "uuid_audio_stream $CH_UUID send_text {\"type\":\"rawAudio\",\"data\":{\"sampleRate\":8000}}" "+OK"
+sleep 1
+PRE_ECHO=$(stats_field streamaudio_echoed)
+check "send streamAudio (reverse path)" \
+    "uuid_audio_stream $CH_UUID send_text {\"type\":\"streamAudio\",\"data\":{\"audioDataType\":\"raw\",\"sampleRate\":8000,\"audioData\":\"AAAA\",\"e2e_test\":1}}" "+OK"
+sleep 4
+POST_ECHO=$(stats_field streamaudio_echoed)
+echo -n "  reverse playback path ... "
+if [ "$POST_ECHO" -gt "$PRE_ECHO" ] 2>/dev/null; then
+    echo "PASS (server echoed streamAudio: $PRE_ECHO -> $POST_ECHO)"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL (no echo: $PRE_ECHO -> $POST_ECHO)"
+    FAIL=$((FAIL + 1))
+fi
+
+# Verify forward path: binary audio frames reach the server
+sleep 2
+BIN=$(stats_field binary_frames)
+BYTES=$(stats_field bytes_received)
+CONN=$(stats_field connections)
+echo -n "  forward audio streaming ... "
+if [ "$BIN" -gt 0 ] 2>/dev/null && [ "$CONN" -gt 0 ] 2>/dev/null; then
+    echo "PASS ($BIN frames / $BYTES bytes, $CONN WS connections)"
+    PASS=$((PASS + 1))
+else
+    echo "FAIL (frames=$BIN connections=$CONN)"
+    FAIL=$((FAIL + 1))
+fi
+
+# ---- pause / resume ----
+echo "--- Pause / Resume ---"
 check "pause"                 "uuid_audio_stream $CH_UUID pause"       "+OK"
 check "resume"                "uuid_audio_stream $CH_UUID resume"      "+OK"
 check "pause again"           "uuid_audio_stream $CH_UUID pause"       "+OK"
 check "resume again"          "uuid_audio_stream $CH_UUID resume"      "+OK"
 
-# ---- metadata & text ----
+# ---- text & metadata ----
 echo ""
 echo "--- Text & Metadata ---"
 check "send_text"             "uuid_audio_stream $CH_UUID send_text '{\"command\":\"ping\"}'"  "+OK"
@@ -106,6 +150,19 @@ if [ -n "$CH_24K" ]; then
     check "24k call active"      "uuid_exists $CH_24K"   "true"
     check "24k pause"            "uuid_audio_stream $CH_24K pause"  "+OK"
     check "24k resume"           "uuid_audio_stream $CH_24K resume" "+OK"
+
+    # 24k forward audio: verify binary frames flow at 24000 Hz
+    sleep 2
+    BIN_24K=$(stats_field binary_frames)
+    echo -n "  24k forward audio streaming ... "
+    if [ "$BIN_24K" -gt "$BIN" ] 2>/dev/null; then
+        echo "PASS ($BIN_24K frames — audio flowing at 24k)"
+        PASS=$((PASS + 1))
+    else
+        echo "FAIL (before=$BIN after=$BIN_24K)"
+        FAIL=$((FAIL + 1))
+    fi
+
     check "24k break"            "uuid_audio_stream $CH_24K break"  "+OK"
     check "24k stop"             "uuid_audio_stream $CH_24K stop"   "+OK"
 fi

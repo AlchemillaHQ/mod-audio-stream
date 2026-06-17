@@ -312,7 +312,7 @@ private:
                                     }
                                     if (tp->playback_resampler) {
                                         spx_uint32_t in_len  = (spx_uint32_t)(src_len / 2);
-                                        spx_uint32_t out_len = (spx_uint32_t)(in_len * (uint64_t)tp->sampling / pr.sampleRate + 32);
+                                        spx_uint32_t out_len = (spx_uint32_t)(in_len * (uint64_t)tp->native_sampling / pr.sampleRate + 32);
                                         std::vector<spx_int16_t> out(out_len);
                                         speex_resampler_process_int(tp->playback_resampler, 0,
                                             (const spx_int16_t*)src, &in_len, out.data(), &out_len);
@@ -384,7 +384,7 @@ private:
                     }
                     if (tp->playback_resampler) {
                         spx_uint32_t in_len  = (spx_uint32_t)(src_len / 2);
-                        spx_uint32_t out_len = (spx_uint32_t)(in_len * (uint64_t)tp->sampling / m_rawSampleRate + 32);
+                        spx_uint32_t out_len = (spx_uint32_t)(in_len * (uint64_t)tp->native_sampling / m_rawSampleRate + 32);
                         std::vector<spx_int16_t> out(out_len);
                         speex_resampler_process_int(tp->playback_resampler, 0,
                             (const spx_int16_t*)src, &in_len, out.data(), &out_len);

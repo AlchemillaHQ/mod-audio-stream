@@ -23,6 +23,7 @@ services:
     command: sh -c "pip install websockets && python3 server.py"
     ports:
       - "8080:8080"
+      - "8081:8081"
     volumes:
       - ./server.py:/app/server.py
     healthcheck:
