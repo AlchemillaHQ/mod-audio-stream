@@ -1047,23 +1047,13 @@ extern "C" {
             
             switch_buffer_read(tech_pvt->playback_buffer, frame_buf, read);
 
-            // inject into write frame - replace just the first frame
-            switch_frame_t frame = {};
-            uint8_t data[SWITCH_RECOMMENDED_BUFFER_SIZE];
-            frame.data = data;
-            frame.buflen = sizeof(data);
+            // get direct pointer to the core's write-replace frame
+            switch_frame_t *rframe = switch_core_media_bug_get_write_replace_frame(bug);
             int replaced = 0;
-
-            if (switch_core_media_bug_read(bug, &frame, SWITCH_TRUE) == SWITCH_STATUS_SUCCESS) {
-                switch_core_session_t *session = switch_core_media_bug_get_session(bug);
-                switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO,
-                    "stream_frame_write frame_bytes=%zu frame.datalen=%u read=%zu\n",
-                    frame_bytes, frame.datalen, read);
-                if (frame.datalen >= read) {
-                    memcpy(frame.data, frame_buf, read);
-                    frame.datalen = read;
-                    replaced = 1;
-                }
+            if (rframe && rframe->datalen >= read) {
+                memcpy(rframe->data, frame_buf, read);
+                rframe->datalen = (uint32_t)read;
+                replaced = 1;
             }
 
             if (replaced) {
