@@ -1055,6 +1055,10 @@ extern "C" {
             int replaced = 0;
 
             if (switch_core_media_bug_read(bug, &frame, SWITCH_TRUE) == SWITCH_STATUS_SUCCESS) {
+                switch_core_session_t *session = switch_core_media_bug_get_session(bug);
+                switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO,
+                    "stream_frame_write frame_bytes=%zu frame.datalen=%u read=%zu\n",
+                    frame_bytes, frame.datalen, read);
                 if (frame.datalen >= read) {
                     memcpy(frame.data, frame_buf, read);
                     frame.datalen = read;
