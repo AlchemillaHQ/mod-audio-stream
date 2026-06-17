@@ -21,7 +21,7 @@ check() {
     fi
 }
 
-STATS_URL="http://169.254.1.2:8081/stats"
+STATS_URL="http://ws_test_server:8081/stats"
 stats_field() {
     python3 -c "import urllib.request,json;r=urllib.request.urlopen('$STATS_URL');print(json.loads(r.read()).get('$1',0))" 2>/dev/null || echo 0
 }
@@ -132,7 +132,7 @@ ORIG_OUT2=$($FS_CLI 'bgapi originate {origination_caller_id_number=1000}loopback
 sleep 5
 CH2=$(fs_cli -x 'show channels' 2>&1 | grep ',inbound,' | grep -oP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | tail -1) || true
 if [ -n "$CH2" ] && [ "$CH2" != "$CH_UUID" ]; then
-    check "restart blocked"   "uuid_audio_stream $CH2 start ws://169.254.1.2:8080/audio mono 8k" "Operation Failed"
+    check "restart blocked"   "uuid_audio_stream $CH2 start ws://ws_test_server:8080/audio mono 8k" "Operation Failed"
     check "stop second call"  "uuid_audio_stream $CH2 stop" "+OK"
 fi
 
