@@ -295,14 +295,14 @@ private:
                                 std::vector<uint8_t> resampled;
 
                                 // resample if source rate != channel rate
-                                if (pr.sampleRate != tp->sampling && pr.sampleRate > 0 && src_len > 0) {
+                                if (pr.sampleRate != tp->native_sampling && pr.sampleRate > 0 && src_len > 0) {
                                     if (!tp->playback_resampler ||
                                         tp->playback_sample_rate != pr.sampleRate) {
                                         if (tp->playback_resampler)
                                             speex_resampler_destroy(tp->playback_resampler);
                                         int err;
                                         tp->playback_resampler = speex_resampler_init(
-                                            1, pr.sampleRate, tp->sampling, SWITCH_RESAMPLE_QUALITY, &err);
+                                            1, pr.sampleRate, tp->native_sampling, SWITCH_RESAMPLE_QUALITY, &err);
                                         if (err != 0) {
                                             tp->playback_resampler = nullptr;
                                             tp->playback_sample_rate = 0;
@@ -328,7 +328,7 @@ private:
                                 switch_buffer_write(tp->playback_buffer, src, src_len);
                                 tp->playback_in_response = 1;
                                 tp->playback_chunks_remaining = (int)(
-                                    src_len / (tp->sampling * 2 * PLAYBACK_FRAME_MS / 1000)
+                                    src_len / (tp->native_sampling * 2 * PLAYBACK_FRAME_MS / 1000)
                                 );
                                 switch_mutex_unlock(tp->mutex);
                             }
@@ -367,14 +367,14 @@ private:
                 size_t src_len = len;
                 std::vector<uint8_t> resampled;
 
-                if (m_rawSampleRate != tp->sampling && m_rawSampleRate > 0 && src_len > 0) {
+                if (m_rawSampleRate != tp->native_sampling && m_rawSampleRate > 0 && src_len > 0) {
                     if (!tp->playback_resampler ||
                         tp->playback_sample_rate != m_rawSampleRate) {
                         if (tp->playback_resampler)
                             speex_resampler_destroy(tp->playback_resampler);
                         int err;
                         tp->playback_resampler = speex_resampler_init(
-                            1, m_rawSampleRate, tp->sampling, SWITCH_RESAMPLE_QUALITY, &err);
+                            1, m_rawSampleRate, tp->native_sampling, SWITCH_RESAMPLE_QUALITY, &err);
                         if (err != 0) {
                             tp->playback_resampler = nullptr;
                             tp->playback_sample_rate = 0;
@@ -400,7 +400,7 @@ private:
                 switch_buffer_write(tp->playback_buffer, src, src_len);
                 tp->playback_in_response = 1;
                 tp->playback_chunks_remaining = (int)(
-                    src_len / (tp->sampling * 2 * PLAYBACK_FRAME_MS / 1000)
+                    src_len / (tp->native_sampling * 2 * PLAYBACK_FRAME_MS / 1000)
                 );
                 switch_mutex_unlock(tp->mutex);
             }
@@ -560,6 +560,7 @@ namespace {
         strncpy(tech_pvt->sessionId, switch_core_session_get_uuid(session), MAX_SESSION_ID);
         strncpy(tech_pvt->ws_uri, wsUri, MAX_WS_URI);
         tech_pvt->sampling = desiredSampling;
+        tech_pvt->native_sampling = (int)sampling;
         tech_pvt->responseHandler = responseHandler;
         tech_pvt->rtp_packets = rtp_packets;
         tech_pvt->channels = channels;
@@ -595,13 +596,13 @@ namespace {
         // playback buffer: pre-allocate for PLAYBACK_BUFFER_SECONDS of audio
         tech_pvt->playback_enabled = playback_enabled ? 1 : 0;
         if (tech_pvt->playback_enabled) {
-            size_t playback_buflen = desiredSampling * 2 * PLAYBACK_BUFFER_SECONDS; // 16-bit mono
+            size_t playback_buflen = sampling * 2 * PLAYBACK_BUFFER_SECONDS; // 16-bit mono
             if (switch_buffer_create(pool, &tech_pvt->playback_buffer, playback_buflen) != SWITCH_STATUS_SUCCESS) {
                 switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR,
                     "%s: Error creating playback buffer.\n", tech_pvt->sessionId);
                 return SWITCH_STATUS_FALSE;
             }
-            tech_pvt->playback_sample_rate = desiredSampling;
+            tech_pvt->playback_sample_rate = (int)sampling;
             tech_pvt->playback_seq = 0;
             tech_pvt->playback_chunks_remaining = 0;
             tech_pvt->playback_resampler = nullptr;
@@ -1037,7 +1038,7 @@ extern "C" {
         }
 
         // 20ms frame size in bytes (16-bit mono at channel sample rate)
-        size_t frame_bytes = tech_pvt->sampling * 2 * PLAYBACK_FRAME_MS / 1000;
+        size_t frame_bytes = tech_pvt->native_sampling * 2 * PLAYBACK_FRAME_MS / 1000;
 
         if (switch_buffer_inuse(tech_pvt->playback_buffer) >= frame_bytes) {
             uint8_t frame_buf[4096];

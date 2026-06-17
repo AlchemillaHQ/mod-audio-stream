@@ -30,6 +30,7 @@ struct private_data {
     void *pAudioStreamer;
     char ws_uri[MAX_WS_URI];
     int sampling;
+    int native_sampling;
     int channels;
     unsigned int audio_paused:1;
     unsigned int close_requested:1;

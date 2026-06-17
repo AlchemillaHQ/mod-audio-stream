@@ -92,6 +92,24 @@ if [ -n "$CH2" ] && [ "$CH2" != "$CH_UUID" ]; then
     check "stop second call"  "uuid_audio_stream $CH2 stop" "+OK"
 fi
 
+# ---- 24000 Hz Streaming ----
+echo ""
+echo "--- 24000 Hz Streaming ---"
+ORIG_24K=$($FS_CLI 'bgapi originate {origination_caller_id_number=1000}loopback/test_24k_001 9196' 2>&1) || true
+echo "  Originate 24k: $ORIG_24K"
+sleep 5
+
+CH_24K=$(fs_cli -x 'show channels' 2>&1 | grep ',inbound,' | grep -oP '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | tail -1) || true
+echo "  Channel UUID 24k: $CH_24K"
+
+if [ -n "$CH_24K" ]; then
+    check "24k call active"      "uuid_exists $CH_24K"   "true"
+    check "24k pause"            "uuid_audio_stream $CH_24K pause"  "+OK"
+    check "24k resume"           "uuid_audio_stream $CH_24K resume" "+OK"
+    check "24k break"            "uuid_audio_stream $CH_24K break"  "+OK"
+    check "24k stop"             "uuid_audio_stream $CH_24K stop"   "+OK"
+fi
+
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 exit $FAIL

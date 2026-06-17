@@ -10,6 +10,16 @@
         <action application="park"/>
       </condition>
     </extension>
+    <extension name="loopback_test_24k">
+      <condition field="destination_number" expression="^(test_24k_\d+)$">
+        <action application="answer"/>
+        <action application="set" data="STREAM_PLAYBACK=true"/>
+        <action application="set" data="STREAM_SAMPLE_RATE=24000"/>
+        <action application="set" data="STREAM_SUPPRESS_LOG=true"/>
+        <action application="uuid_audio_stream" data="start ws://169.254.1.2:8080/audio mono 24000"/>
+        <action application="park"/>
+      </condition>
+    </extension>
     <extension name="park_everything">
       <condition field="destination_number" expression="^(\d+)$">
         <action application="answer"/>
