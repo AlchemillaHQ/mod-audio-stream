@@ -327,7 +327,7 @@ private:
 
                                 switch_buffer_write(tp->playback_buffer, src, src_len);
                                 tp->playback_in_response = 1;
-                                tp->playback_chunks_remaining = (int)(
+                                tp->playback_chunks_remaining += (int)(
                                     src_len / (tp->native_sampling * 2 * PLAYBACK_FRAME_MS / 1000)
                                 );
                                 switch_mutex_unlock(tp->mutex);
@@ -399,7 +399,7 @@ private:
 
                 switch_buffer_write(tp->playback_buffer, src, src_len);
                 tp->playback_in_response = 1;
-                tp->playback_chunks_remaining = (int)(
+                tp->playback_chunks_remaining += (int)(
                     src_len / (tp->native_sampling * 2 * PLAYBACK_FRAME_MS / 1000)
                 );
                 switch_mutex_unlock(tp->mutex);
