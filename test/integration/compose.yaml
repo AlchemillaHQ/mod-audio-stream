@@ -1,0 +1,33 @@
+services:
+  freeswitch:
+    image: mod_audio_stream_freeswitch:latest
+    build:
+      context: ../..
+      dockerfile: Containerfile
+    container_name: fs_test
+    ports:
+      - "8021:8021"
+    depends_on:
+      test_server:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "fs_cli", "-x", "version"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  test_server:
+    image: python:3-slim
+    container_name: ws_test_server
+    working_dir: /app
+    command: sh -c "pip install websockets && python3 server.py"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./server.py:/app/server.py
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; s=socket.socket(); s.connect(('localhost',8080)); s.close()"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
