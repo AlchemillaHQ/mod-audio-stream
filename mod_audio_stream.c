@@ -87,8 +87,10 @@ static switch_status_t start_capture(switch_core_session_t *session,
     }
 
     // if STREAM_PLAYBACK is enabled, add write-replace to inject audio
+    // SMBF_WRITE_STREAM is required alongside SMBF_WRITE_REPLACE — it
+    // primes the write-side pipeline so raw_write_frame is populated.
     if (switch_channel_var_true(channel, "STREAM_PLAYBACK")) {
-        flags |= SMBF_WRITE_REPLACE;
+        flags |= SMBF_WRITE_REPLACE | SMBF_WRITE_STREAM;
     }
 
     switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "calling stream_session_init.\n");

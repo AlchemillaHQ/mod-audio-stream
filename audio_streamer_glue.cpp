@@ -810,7 +810,7 @@ extern "C" {
             frame.data = data_buf;
             frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;
 
-            while (switch_core_media_bug_read(bug, &frame, SWITCH_TRUE) == SWITCH_STATUS_SUCCESS) {
+            while (switch_core_media_bug_read(bug, &frame, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
                 if (!frame.datalen) {
                     continue;
                 }
@@ -844,7 +844,7 @@ extern "C" {
             frame.data = data;
             frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;
 
-            while (switch_core_media_bug_read(bug, &frame, SWITCH_TRUE) == SWITCH_STATUS_SUCCESS) {
+            while (switch_core_media_bug_read(bug, &frame, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
                 if(!frame.datalen) {
                     continue;
                 }
@@ -1054,6 +1054,16 @@ extern "C" {
                 memcpy(rframe->data, frame_buf, read);
                 rframe->datalen = (uint32_t)read;
                 replaced = 1;
+            } else if (!tech_pvt->playback_in_response) {
+                // Log only once per response cycle — not on every silent write frame
+                static int warn_count = 0;
+                if (warn_count++ < 3) {
+                    switch_core_session_t *s = switch_core_media_bug_get_session(bug);
+                    switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(s), SWITCH_LOG_WARNING,
+                        "stream_frame_write: rframe=%s datalen=%u need=%zu (no audio to inject yet?)\n",
+                        rframe ? "ok" : "NULL",
+                        rframe ? rframe->datalen : 0, read);
+                }
             }
 
             if (replaced) {
